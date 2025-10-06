@@ -10,95 +10,82 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- Chart.js for Graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- Google Fonts for better PDF support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
-        /* Custom styles to ensure responsive input sizing */
+        body {
+            font-family: 'Assistant', sans-serif;
+        }
         .input-group label {
             text-align: right;
             display: block;
             margin-bottom: 4px;
             font-weight: 600;
         }
-        input[type="number"] {
-            -moz-appearance: textfield;
+        input[type="number"] { -moz-appearance: textfield; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        /* Accordion Styles */
+        .accordion-header {
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
         }
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+        .accordion-header:hover {
+            background-color: #f9fafb; /* gray-50 */
         }
-        /* Modal Overlay */
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+        .accordion-content.open {
+            max-height: 1000px; /* Large enough for content */
+        }
+        .accordion-icon {
+            transition: transform 0.3s ease-in-out;
+        }
+        .open .accordion-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Modal Styles */
         .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7);
+            display: flex; justify-content: center; align-items: center; z-index: 1000;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
         }
-        .modal-overlay.open {
-            opacity: 1;
-            pointer-events: auto;
-        }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
         .modal-content {
-            background-color: white;
-            border-radius: 12px;
-            padding: 30px;
-            max-width: 90%;
-            width: 700px;
-            max-height: 90vh;
-            overflow-y: auto;
-            transform: scale(0.9);
-            transition: transform 0.3s ease;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-            text-align: right;
+            background-color: white; border-radius: 12px; padding: 30px; max-width: 90%; width: 700px; max-height: 90vh;
+            overflow-y: auto; transform: scale(0.9); transition: transform 0.3s ease; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5); text-align: right;
         }
-        .modal-overlay.open .modal-content {
-            transform: scale(1);
-        }
-        /* Style for the hidden PDF template container */
+        .modal-overlay.open .modal-content { transform: scale(1); }
+        
+        /* PDF Template Styles */
         #pdf-template {
-            width: 210mm; /* A4 width */
-            padding: 20mm;
-            box-sizing: border-box;
-            background-color: #ffffff;
-            font-family: Arial, sans-serif;
-            font-size: 10pt;
-            text-align: right;
-            direction: rtl;
-            position: absolute; /* Keep it out of the normal document flow */
-            left: -9999px;    /* Move it off-screen */
-            top: -9999px;
+            width: 210mm; padding: 20mm; box-sizing: border-box; background-color: #ffffff; font-family: 'Assistant', sans-serif;
+            font-size: 10pt; text-align: right; direction: rtl; position: absolute; left: -9999px; top: -9999px;
         }
-        #pdf-template table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-        #pdf-template th, #pdf-template td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: right;
-        }
-        #pdf-template th {
-            background-color: #f2f2f2;
-            font-weight: bold;
+        #pdf-template table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        #pdf-template th, #pdf-template td { border: 1px solid #ccc; padding: 8px; text-align: right; }
+        #pdf-template th { background-color: #f2f2f2; font-weight: bold; }
+
+        /* Real-time Validation Style */
+        .input-invalid {
+            border-color: #ef4444; /* red-500 */
+            box-shadow: 0 0 0 2px #fecaca; /* red-200 */
         }
     </style>
 </head>
-<body class="bg-gray-100 font-sans p-4 sm:p-8">
+<body class="bg-gray-100 p-4 sm:p-8">
 
     <div id="app" class="max-w-7xl mx-auto">
         <header class="mb-8 text-center">
-            <h1 class="text-4xl font-extrabold text-blue-800">מחשבון חלוקת תשלומי שירות</h1>
-            <p class="text-gray-600 mt-2">חלוקת חשבון חשמל ומים בין 3 דירות עם גרפים וייצוא PDF</p>
+            <h1 class="text-4xl font-extrabold text-blue-800">מחשבון חלוקת תשלומים</h1>
+            <p class="text-gray-600 mt-2">ממשק חכם ומהיר לחלוקת חשבונות בין 3 דירות</p>
             <p id="user-id-display" class="text-xs text-gray-400 mt-2 break-all">שמירה מקומית מופעלת (localStorage)</p>
         </header>
 
@@ -109,182 +96,127 @@
             <!-- Input Form Column -->
             <section class="lg:col-span-1">
                 <div class="p-6 bg-white rounded-xl shadow-2xl sticky top-8 border-t-4 border-blue-500">
-                    <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">הגדרות ושדות קריאה</h2>
-                    
-                    <!-- 1. Name Configuration -->
-                    <div class="mb-6 border p-4 rounded-xl bg-gray-50">
-                        <h3 class="font-semibold text-gray-700 mb-2 border-b pb-1">שמות הדירות</h3>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="input-group col-span-1">
-                                <label for="apt1-name" class="text-gray-700 text-sm">שם דירה 1</label>
-                                <input type="text" id="apt1-name" value="דירה 1" data-type="name" class="w-full p-2 border border-gray-300 rounded-lg text-sm" />
-                            </div>
-                            <div class="input-group col-span-1">
-                                <label for="apt2-name" class="text-gray-700 text-sm">שם דירה 2</label>
-                                <input type="text" id="apt2-name" value="דירה 2" data-type="name" class="w-full p-2 border border-gray-300 rounded-lg text-sm" />
-                            </div>
-                            <div class="input-group col-span-2">
-                                <label for="apt3-name" class="text-gray-700 text-sm">שם דירה 3 (כללי)</label>
-                                <input type="text" id="apt3-name" value="דירה כללית" data-type="name" class="w-full p-2 border border-gray-300 rounded-lg text-sm" />
-                            </div>
-                        </div>
-                        <button onclick="saveApartmentNames()" class="w-full mt-3 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-xl shadow-md transition duration-300 text-sm">
-                            שמור שמות דירות
-                        </button>
-                    </div>
-
-                    <!-- 2. Reading Form -->
                     <form id="reading-form">
-                        <h2 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2">הזנת קריאות מונה</h2>
-
-                        <!-- Date -->
-                        <div class="mb-4 input-group">
-                            <label for="date" class="text-gray-700">תאריך קריאה נוכחי (A) <span class="text-red-500">*</span></label>
-                            <input type="date" id="date" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
-                        </div>
-
-                        <!-- Previous Readings Display (UX Improvement) -->
-                         <div id="prev-readings-display" class="p-3 bg-yellow-50 rounded-lg mb-4 text-xs text-right hidden">
-                            <h4 class="font-bold text-gray-700 mb-1">קריאה קודמת (תאריך: <span id="prev-date">---</span>):</h4>
-                            <div class="grid grid-cols-2 gap-x-4">
-                                <div>חשמל 1: <span id="prev-B" class="font-mono">0</span> | חשמל 2: <span id="prev-C" class="font-mono">0</span> | חשמל כללי: <span id="prev-D" class="font-mono">0</span></div>
-                                <div>מים 1: <span id="prev-E" class="font-mono">0</span> | מים 2: <span id="prev-F" class="font-mono">0</span> | מים כללי: <span id="prev-G" class="font-mono">0</span></div>
-                            </div>
-                        </div>
-
-                        <!-- Meter Readings -->
-                        <div class="mb-6">
-                            <h3 class="font-semibold text-gray-700 mb-2 border-b">קריאות מונה נוכחי (חדש)</h3>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="input-group">
-                                    <label id="label-B" for="B">חשמל 1 (קוט"ש) <span class="text-red-500">*</span></label>
-                                    <input type="number" id="B" data-type="meter" required min="0" step="1" class="w-full p-2 border border-gray-300 rounded-lg text-right" placeholder="מונה דירה 1" />
-                                </div>
-                                <div class="input-group">
-                                    <label id="label-C" for="C">חשמל 2 (קוט"ש) <span class="text-red-500">*</span></label>
-                                    <input type="number" id="C" data-type="meter" required min="0" step="1" class="w-full p-2 border border-gray-300 rounded-lg text-right" placeholder="מונה דירה 2" />
-                                </div>
-                                <div class="input-group col-span-2">
-                                    <label id="label-D" for="D">חשמל כללי (קוט"ש) <span class="text-red-500">*</span></label>
-                                    <input type="number" id="D" data-type="meter" required min="0" step="1" class="w-full p-2 border border-gray-300 rounded-lg text-right font-bold bg-blue-50" placeholder="מונה ראשי" />
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4 mt-4">
-                                <div class="input-group">
-                                    <label id="label-E" for="E">מים 1 (קוב) <span class="text-red-500">*</span></label>
-                                    <input type="number" id="E" data-type="meter" required min="0" step="0.1" class="w-full p-2 border border-gray-300 rounded-lg text-right" placeholder="מונה דירה 1" />
-                                </div>
-                                <div class="input-group">
-                                    <label id="label-F" for="F">מים 2 (קוב) <span class="text-red-500">*</span></label>
-                                    <input type="number" id="F" data-type="meter" required min="0" step="0.1" class="w-full p-2 border border-gray-300 rounded-lg text-right" placeholder="מונה דירה 2" />
-                                </div>
-                                <div class="input-group col-span-2">
-                                    <label id="label-G" for="G">מים כללי (קוב) <span class="text-red-500">*</span></label>
-                                    <input type="number" id="G" data-type="meter" required min="0" step="0.1" class="w-full p-2 border border-gray-300 rounded-lg text-right font-bold bg-blue-50" placeholder="מונה ראשי" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Tariffs -->
-                        <div class="mb-6 border p-4 rounded-xl bg-gray-50">
-                            <h3 class="font-semibold text-gray-700 mb-2 border-b pb-1">תעריפים ועלויות קבועות</h3>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="input-group">
-                                    <label for="H">עלות קוט"ש (H) <span class="text-red-500">*</span></label>
-                                    <input type="number" id="H" data-type="tariff" required min="0" step="0.001" value="0.60" class="w-full p-2 border border-gray-300 rounded-lg text-right text-sm" />
-                                </div>
-                                <div class="input-group">
-                                    <label for="J">תשלום קבוע חשמל (J)</label>
-                                    <input type="number" id="J" data-type="tariff" min="0" step="0.01" value="25.00" class="w-full p-2 border border-gray-300 rounded-lg text-right text-sm" />
-                                </div>
-                                <div class="input-group">
-                                    <label for="I">מע"מ חשמל (I, 0.17)</label>
-                                    <input type="number" id="I" data-type="tariff" min="0" max="1" step="0.01" value="0.17" class="w-full p-2 border border-gray-300 rounded-lg text-right text-sm" />
-                                </div>
-                                <div class="input-group">
-                                    <label for="K">עלות קוב מים (K) <span class="text-red-500">*</span></label>
-                                    <input type="number" id="K" data-type="tariff" required min="0" step="0.001" value="7.50" class="w-full p-2 border border-gray-300 rounded-lg text-right text-sm" />
-                                </div>
-                                <div class="input-group">
-                                    <label for="M">תשלום קבוע מים (M)</label>
-                                    <input type="number" id="M" data-type="tariff" min="0" step="0.01" value="15.00" class="w-full p-2 border border-gray-300 rounded-lg text-right text-sm" />
-                                </div>
-                                <div class="input-group">
-                                    <label for="L">מע"מ מים (L, 0.17)</label>
-                                    <input type="number" id="L" data-type="tariff" min="0" max="1" step="0.01" value="0.17" class="w-full p-2 border border-gray-300 rounded-lg text-right text-sm" />
-                                </div>
-                            </div>
-                            <button type="button" onclick="saveTariffsOnly()" class="w-full mt-3 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-xl shadow-md transition duration-300 text-sm">
-                                שמור/עדכן תעריפים בלבד לקריאה האחרונה
-                            </button>
-                        </div>
                         
-                        <button id="save-button" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition duration-300">
-                            שמור קריאה חודשית וחשב
-                        </button>
+                        <!-- Accordion Section 1: Main Reading -->
+                        <div class="accordion-item border-b">
+                             <div class="accordion-header open p-4 flex justify-between items-center" data-accordion-id="1">
+                                <h2 class="text-xl font-bold text-gray-800">הזנת קריאה חדשה</h2>
+                                <svg class="accordion-icon h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                            </div>
+                            <div id="accordion-content-1" class="accordion-content open p-4">
+                                <div class="mb-4 input-group">
+                                    <label for="date" class="text-gray-700">תאריך קריאה נוכחי (A) <span class="text-red-500">*</span></label>
+                                    <input type="date" id="date" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+
+                                <div id="prev-readings-display" class="p-3 bg-yellow-50 rounded-lg mb-4 text-xs text-right hidden">
+                                    <h4 class="font-bold text-gray-700 mb-1">קריאה קודמת (תאריך: <span id="prev-date">---</span>):</h4>
+                                    <div class="grid grid-cols-2 gap-x-4">
+                                        <div>חשמל 1: <span id="prev-B" class="font-mono">0</span> | חשמל 2: <span id="prev-C" class="font-mono">0</span> | כללי: <span id="prev-D" class="font-mono">0</span></div>
+                                        <div>מים 1: <span id="prev-E" class="font-mono">0</span> | מים 2: <span id="prev-F" class="font-mono">0</span> | כללי: <span id="prev-G" class="font-mono">0</span></div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-x-4 gap-y-5">
+                                    <div class="input-group">
+                                        <label id="label-B" for="B">חשמל 1 (קוט"ש) <span class="text-red-500">*</span></label>
+                                        <input type="number" id="B" data-type="meter" required min="0" step="1" class="w-full p-2 border border-gray-300 rounded-lg text-right" placeholder="מונה דירה 1" />
+                                        <span id="feedback-B" class="text-xs text-gray-500 mt-1 h-4 block"></span>
+                                    </div>
+                                    <div class="input-group">
+                                        <label id="label-C" for="C">חשמל 2 (קוט"ש) <span class="text-red-500">*</span></label>
+                                        <input type="number" id="C" data-type="meter" required min="0" step="1" class="w-full p-2 border border-gray-300 rounded-lg text-right" placeholder="מונה דירה 2" />
+                                        <span id="feedback-C" class="text-xs text-gray-500 mt-1 h-4 block"></span>
+                                    </div>
+                                    <div class="input-group col-span-2">
+                                        <label id="label-D" for="D">חשמל כללי (קוט"ש) <span class="text-red-500">*</span></label>
+                                        <input type="number" id="D" data-type="meter" required min="0" step="1" class="w-full p-2 border border-gray-300 rounded-lg text-right font-bold bg-blue-50" placeholder="מונה ראשי" />
+                                        <span id="feedback-D" class="text-xs text-gray-500 mt-1 h-4 block"></span>
+                                    </div>
+                                    <div class="input-group">
+                                        <label id="label-E" for="E">מים 1 (קוב) <span class="text-red-500">*</span></label>
+                                        <input type="number" id="E" data-type="meter" required min="0" step="0.1" class="w-full p-2 border border-gray-300 rounded-lg text-right" placeholder="מונה דירה 1" />
+                                        <span id="feedback-E" class="text-xs text-gray-500 mt-1 h-4 block"></span>
+                                    </div>
+                                    <div class="input-group">
+                                        <label id="label-F" for="F">מים 2 (קוב) <span class="text-red-500">*</span></label>
+                                        <input type="number" id="F" data-type="meter" required min="0" step="0.1" class="w-full p-2 border border-gray-300 rounded-lg text-right" placeholder="מונה דירה 2" />
+                                        <span id="feedback-F" class="text-xs text-gray-500 mt-1 h-4 block"></span>
+                                    </div>
+                                    <div class="input-group col-span-2">
+                                        <label id="label-G" for="G">מים כללי (קוב) <span class="text-red-500">*</span></label>
+                                        <input type="number" id="G" data-type="meter" required min="0" step="0.1" class="w-full p-2 border border-gray-300 rounded-lg text-right font-bold bg-blue-50" placeholder="מונה ראשי" />
+                                        <span id="feedback-G" class="text-xs text-gray-500 mt-1 h-4 block"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Accordion Section 2: Tariffs -->
+                        <div class="accordion-item border-b">
+                            <div class="accordion-header p-4 flex justify-between items-center" data-accordion-id="2">
+                                <h2 class="text-xl font-bold text-gray-800">הגדרות תעריפים</h2>
+                                <svg class="accordion-icon h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                            </div>
+                            <div id="accordion-content-2" class="accordion-content p-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="input-group"><label for="H">עלות קוט"ש (H) <span class="text-red-500">*</span></label><input type="number" id="H" data-type="tariff" required min="0" step="0.001" value="0.60" class="w-full p-2 border rounded-lg text-sm" /></div>
+                                    <div class="input-group"><label for="J">קבוע חשמל (J)</label><input type="number" id="J" data-type="tariff" min="0" step="0.01" value="25.00" class="w-full p-2 border rounded-lg text-sm" /></div>
+                                    <div class="input-group"><label for="I">מע"מ חשמל (I)</label><input type="number" id="I" data-type="tariff" min="0" max="1" step="0.01" value="0.17" class="w-full p-2 border rounded-lg text-sm" /></div>
+                                    <div class="input-group"><label for="K">עלות קוב מים (K) <span class="text-red-500">*</span></label><input type="number" id="K" data-type="tariff" required min="0" step="0.001" value="7.50" class="w-full p-2 border rounded-lg text-sm" /></div>
+                                    <div class="input-group"><label for="M">קבוע מים (M)</label><input type="number" id="M" data-type="tariff" min="0" step="0.01" value="15.00" class="w-full p-2 border rounded-lg text-sm" /></div>
+                                    <div class="input-group"><label for="L">מע"מ מים (L)</label><input type="number" id="L" data-type="tariff" min="0" max="1" step="0.01" value="0.17" class="w-full p-2 border rounded-lg text-sm" /></div>
+                                </div>
+                                <button type="button" onclick="saveTariffsOnly()" class="w-full mt-3 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-xl text-sm">שמור/עדכן תעריפים לקריאה אחרונה</button>
+                            </div>
+                        </div>
+
+                        <!-- Accordion Section 3: Apartment Names -->
+                        <div class="accordion-item border-b">
+                            <div class="accordion-header p-4 flex justify-between items-center" data-accordion-id="3">
+                                <h2 class="text-xl font-bold text-gray-800">הגדרות שמות הדירות</h2>
+                                <svg class="accordion-icon h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                            </div>
+                            <div id="accordion-content-3" class="accordion-content p-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="input-group col-span-1"><label for="apt1-name" class="text-sm">שם דירה 1</label><input type="text" id="apt1-name" value="דירה 1" class="w-full p-2 border rounded-lg text-sm" /></div>
+                                    <div class="input-group col-span-1"><label for="apt2-name" class="text-sm">שם דירה 2</label><input type="text" id="apt2-name" value="דירה 2" class="w-full p-2 border rounded-lg text-sm" /></div>
+                                    <div class="input-group col-span-2"><label for="apt3-name" class="text-sm">שם דירה 3 (כללי)</label><input type="text" id="apt3-name" value="דירה כללית" class="w-full p-2 border rounded-lg text-sm" /></div>
+                                </div>
+                                <button type="button" onclick="saveApartmentNames()" class="w-full mt-3 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-xl text-sm">שמור שמות</button>
+                            </div>
+                        </div>
+
+                        <button id="save-button" type="submit" class="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition duration-300">שמור קריאה וחשב</button>
                     </form>
 
-                    <!-- Import / Export / Reset Controls -->
                     <div class="mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 gap-3">
-                         <!-- Export Menu -->
                         <div class="relative col-span-1">
-                            <button id="export-menu-button" type="button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-3 rounded-xl shadow-lg transition duration-300 flex items-center justify-center text-sm">
-                                ייצוא נתונים
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                            </button>
-                            <div id="export-menu" class="absolute left-0 w-48 mt-2 origin-top-right bg-white border border-gray-200 divide-y divide-gray-100 rounded-md shadow-lg z-20 hidden">
-                                <div class="py-1">
-                                    <button onclick="exportToPdf()" class="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        ייצוא דוח PDF מעוצב
-                                    </button>
-                                    <button onclick="exportToJson()" class="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        ייצוא JSON (גיבוי)
-                                    </button>
-                                </div>
-                            </div>
+                            <button id="export-menu-button" type="button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-3 rounded-xl flex items-center justify-center text-sm">ייצוא<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg></button>
+                            <div id="export-menu" class="absolute left-0 w-48 mt-2 origin-top-right bg-white border rounded-md shadow-lg z-20 hidden"><div class="py-1"><button onclick="exportToPdf()" class="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ייצוא PDF</button><button onclick="exportToJson()" class="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ייצוא JSON (גיבוי)</button></div></div>
                         </div>
-
-                        <!-- Import Button -->
                         <div class="col-span-1">
                             <input type="file" id="import-file" accept=".json" class="hidden" />
-                            <button id="import-button" type="button" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2.5 px-3 rounded-xl shadow-lg transition duration-300 flex items-center justify-center text-sm">
-                                ייבוא נתונים
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                </svg>
-                            </button>
+                            <button id="import-button" type="button" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2.5 px-3 rounded-xl flex items-center justify-center text-sm">ייבוא<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></button>
                         </div>
-                        
-                        <!-- Reset Button -->
-                        <button id="reset-button" type="button" class="w-full mt-3 col-span-2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition duration-300">
-                            מחק את כל הנתונים והתחל מחדש
-                        </button>
+                        <button id="reset-button" type="button" class="w-full mt-3 col-span-2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl">מחק את כל הנתונים</button>
                     </div>
                 </div>
             </section>
             
             <!-- Results and History Column -->
             <section class="lg:col-span-2">
-                
-                <!-- Calculation Results - Now displays the latest saved calculation on load -->
-                <div id="results" class="mb-8 p-6 bg-gray-50 rounded-xl shadow-inner border border-gray-200">
+                <!-- Calculation Results Dashboard -->
+                <div id="results" class="mb-8">
                     <!-- Content will be populated by the script -->
                 </div>
                 
-                <!-- Consumption Charts (New Feature) -->
+                <!-- Consumption Charts -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div class="bg-white p-4 rounded-xl shadow-lg border border-blue-200">
-                        <h3 class="text-lg font-bold text-gray-700 mb-3 border-b pb-1">גרף צריכת חשמל (קוט"ש)</h3>
-                        <div class="h-64"><canvas id="electric-chart"></canvas></div>
-                    </div>
-                    <div class="bg-white p-4 rounded-xl shadow-lg border border-green-200">
-                        <h3 class="text-lg font-bold text-gray-700 mb-3 border-b pb-1">גרף צריכת מים (קוב)</h3>
-                        <div class="h-64"><canvas id="water-chart"></canvas></div>
-                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-lg border border-blue-200"><h3 class="text-lg font-bold text-gray-700 mb-3 border-b pb-1">גרף צריכת חשמל (קוט"ש)</h3><div class="h-64"><canvas id="electric-chart"></canvas></div></div>
+                    <div class="bg-white p-4 rounded-xl shadow-lg border border-green-200"><h3 class="text-lg font-bold text-gray-700 mb-3 border-b pb-1">גרף צריכת מים (קוב)</h3><div class="h-64"><canvas id="water-chart"></canvas></div></div>
                 </div>
-
 
                 <!-- History Table -->
                 <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 overflow-x-auto">
@@ -301,9 +233,7 @@
                                 <th class="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">פעולות</th>
                             </tr>
                         </thead>
-                        <tbody id="history-body" class="bg-white divide-y divide-gray-200">
-                            <!-- Data populated by renderHistory -->
-                        </tbody>
+                        <tbody id="history-body" class="bg-white divide-y divide-gray-200"></tbody>
                     </table>
                 </div>
             </section>
@@ -313,15 +243,8 @@
     <!-- Details/Confirmation Modal Structure -->
     <div id="details-modal-overlay" class="modal-overlay" onclick="closeDetailsModal()">
         <div id="details-modal-content" class="modal-content" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h2 id="modal-title" class="text-2xl font-bold text-gray-800"></h2>
-                <button onclick="closeDetailsModal()" class="text-gray-500 hover:text-gray-700 text-3xl font-light leading-none">
-                    &times;
-                </button>
-            </div>
-            <div id="modal-body">
-                <!-- Content inserted dynamically (details or confirmation) -->
-            </div>
+            <div class="flex justify-between items-center border-b pb-3 mb-4"><h2 id="modal-title" class="text-2xl font-bold text-gray-800"></h2><button onclick="closeDetailsModal()" class="text-gray-500 hover:text-gray-700 text-3xl font-light leading-none">&times;</button></div>
+            <div id="modal-body"></div>
         </div>
     </div>
     
@@ -339,34 +262,11 @@
         let waterChartInstance = null;
 
         // --- Utility Functions ---
-        function formatCurrency(amount) {
-            if (typeof amount !== 'number' || isNaN(amount)) return '0.00 ₪'; 
-            return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
-        }
-
-        function formatNumber(num, digits = 2) {
-            if (typeof num !== 'number' || isNaN(num)) return '0';
-            // Use toFixed for decimals, but avoid for integers to prevent ".0"
-            return Number.isInteger(num) && digits === 0 ? num.toString() : num.toFixed(digits);
-        }
-
-        function formatPercent(ratio) {
-            if (typeof ratio !== 'number' || isNaN(ratio)) return '0%';
-            return new Intl.NumberFormat('he-IL', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(ratio);
-        }
-
-        function displayMessage(text, isError = false) {
-            const el = document.getElementById('message-box');
-            el.textContent = text;
-            el.className = `p-3 my-2 rounded-lg text-sm transition-all duration-300 ${isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
-            el.classList.remove('hidden');
-            setTimeout(() => { el.classList.add('hidden'); }, 5000);
-        }
-
-        function getApartmentName(index) {
-            const key = `apt${index}-name`;
-            return apartmentNames[key] || `דירה ${index}`;
-        }
+        function formatCurrency(amount) { if (typeof amount !== 'number' || isNaN(amount)) return '0.00 ₪'; return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount); }
+        function formatNumber(num, digits = 2) { if (typeof num !== 'number' || isNaN(num)) return '0'; return Number.isInteger(num) && digits === 0 ? num.toString() : num.toFixed(digits); }
+        function formatPercent(ratio) { if (typeof ratio !== 'number' || isNaN(ratio)) return '0%'; return new Intl.NumberFormat('he-IL', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(ratio); }
+        function displayMessage(text, isError = false) { const el = document.getElementById('message-box'); el.textContent = text; el.className = `p-3 my-2 rounded-lg text-sm transition-all duration-300 ${isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`; el.classList.remove('hidden'); setTimeout(() => { el.classList.add('hidden'); }, 5000); }
+        function getApartmentName(index) { const key = `apt${index}-name`; return apartmentNames[key] || `דירה ${index}`; }
         
         // --- Core Calculation Logic ---
         function calculateCurrentMonth(currentReading, previousReading) {
@@ -374,127 +274,100 @@
             const currMeters = currentReading.meters;
             const tariffs = currentReading.tariffs;
 
-            // 1. Consumption (Current - Previous)
             const P1_consumed = currMeters.B - (prevMeters.B || 0);
             const P2_consumed = currMeters.C - (prevMeters.C || 0);
             const P_total_consumed = currMeters.D - (prevMeters.D || 0);
-
             const W1_consumed = currMeters.E - (prevMeters.E || 0);
             const W2_consumed = currMeters.F - (prevMeters.F || 0);
             const W_total_consumed = currMeters.G - (prevMeters.G || 0);
             
             const safeConsumption = (val) => Math.max(0, val);
-
             const P3_consumed = safeConsumption(P_total_consumed - P1_consumed - P2_consumed);
             const W3_consumed = safeConsumption(W_total_consumed - W1_consumed - W2_consumed);
 
+            const startDate = previousReading ? new Date(previousReading.date) : new Date(currentReading.date);
+            const endDate = new Date(currentReading.date);
+            const billingDays = Math.max(1, (endDate - startDate) / (1000 * 60 * 60 * 24));
+
             const results = {
                 consumption: { P1: P1_consumed, P2: P2_consumed, P3: P3_consumed, W1: W1_consumed, W2: W2_consumed, W3: W3_consumed },
-                currentMeters: currMeters,
-                previousMeters: prevMeters,
-                tariffs: tariffs,
-                date: currentReading.date,
-                error: null
+                currentMeters: currMeters, previousMeters: prevMeters, tariffs: tariffs, date: currentReading.date, billingDays: billingDays, error: null
             };
 
-            // Basic validation for meter rollbacks
-            if (P1_consumed < -0.01 || P2_consumed < -0.01 || P_total_consumed < -0.01 || 
-                W1_consumed < -0.01 || W2_consumed < -0.01 || W_total_consumed < -0.01) {
-                results.error = 'אחת הקריאות הנוכחיות נמוכה מקריאה קודמת. ודא שהנתונים נכונים.';
-                return results;
+            if (P1_consumed < -0.01 || P2_consumed < -0.01 || P_total_consumed < -0.01 || W1_consumed < -0.01 || W2_consumed < -0.01 || W_total_consumed < -0.01) {
+                results.error = 'אחת הקריאות הנוכחיות נמוכה מקריאה קודמת. ודא שהנתונים נכונים.'; return results;
             }
 
-            // Calculate ratios for fixed costs
             results.ratios = { P1: 0, P2: 0, P3: 0, W1: 0, W2: 0, W3: 0 };
-            if (P_total_consumed > 0.001) {
-                results.ratios.P1 = safeConsumption(P1_consumed) / P_total_consumed;
-                results.ratios.P2 = safeConsumption(P2_consumed) / P_total_consumed;
-                results.ratios.P3 = P3_consumed / P_total_consumed;
-            }
-            if (W_total_consumed > 0.001) {
-                results.ratios.W1 = safeConsumption(W1_consumed) / W_total_consumed;
-                results.ratios.W2 = safeConsumption(W2_consumed) / W_total_consumed;
-                results.ratios.W3 = W3_consumed / W_total_consumed;
-            }
+            if (P_total_consumed > 0.001) { results.ratios.P1 = safeConsumption(P1_consumed) / P_total_consumed; results.ratios.P2 = safeConsumption(P2_consumed) / P_total_consumed; results.ratios.P3 = P3_consumed / P_total_consumed; }
+            if (W_total_consumed > 0.001) { results.ratios.W1 = safeConsumption(W1_consumed) / W_total_consumed; results.ratios.W2 = safeConsumption(W2_consumed) / W_total_consumed; results.ratios.W3 = W3_consumed / W_total_consumed; }
 
-            // Final Costs
             const electricTaxRate = 1 + tariffs.I;
             const waterTaxRate = 1 + tariffs.L;
             
             const AB = (safeConsumption(P1_consumed) * tariffs.H + tariffs.J * results.ratios.P1) * electricTaxRate;
             const AC = (safeConsumption(P2_consumed) * tariffs.H + tariffs.J * results.ratios.P2) * electricTaxRate;
             const AD = (P3_consumed * tariffs.H + tariffs.J * results.ratios.P3) * electricTaxRate;
-
             const AE = (safeConsumption(W1_consumed) * tariffs.K + tariffs.M * results.ratios.W1) * waterTaxRate;
             const AF = (safeConsumption(W2_consumed) * tariffs.K + tariffs.M * results.ratios.W2) * waterTaxRate;
             const AG = (W3_consumed * tariffs.K + tariffs.M * results.ratios.W3) * waterTaxRate;
 
-            results.final = {
-                AH: AB + AE, AI: AC + AF, AJ: AD + AG, // Totals per apartment
-                AK: AB + AC + AD, AL: AE + AF + AG, // Totals per utility
-                AB, AC, AD, AE, AF, AG // Individual costs
-            };
-            
+            results.final = { AH: AB + AE, AI: AC + AF, AJ: AD + AG, AK: AB + AC + AD, AL: AE + AF + AG, AB, AC, AD, AE, AF, AG };
             return results;
         }
 
         // --- UI Rendering ---
         function renderResults(results, title) {
             const resultsDiv = document.getElementById('results');
-            
             if (!results || results.error) {
                  const errorMessage = results ? results.error : 'אין נתונים לחישוב.';
                  resultsDiv.innerHTML = `<div class="p-6 bg-red-50 rounded-xl shadow-lg border border-red-200"><p class="text-lg font-bold text-red-600 mb-4">שגיאת חישוב:</p><p class="text-red-500">${errorMessage}</p></div>`;
                 return;
             }
 
-            const totalElectricBill = results.final.AK;
-            const totalWaterBill = results.final.AL;
+            const apt1Name = getApartmentName(1), apt2Name = getApartmentName(2), apt3Name = getApartmentName(3);
             
-            const P_total_consumed = results.consumption.P1 + results.consumption.P2 + results.consumption.P3;
-            const W_total_consumed = results.consumption.W1 + results.consumption.W2 + results.consumption.W3;
-            
-            const apt1Name = getApartmentName(1);
-            const apt2Name = getApartmentName(2);
-            const apt3Name = getApartmentName(3);
-
             const html = `
-                <div class="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">${title} (${results.date})</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div class="p-4 bg-blue-50 rounded-lg border-2 border-blue-200 text-center shadow-md">
-                            <p class="text-xl font-semibold text-gray-700">${apt1Name}</p>
-                            <p class="text-4xl font-extrabold text-blue-600">${formatCurrency(results.final.AH)}</p>
-                            <p class="text-sm text-gray-500 mt-1">(${formatCurrency(results.final.AB)} חשמל + ${formatCurrency(results.final.AE)} מים)</p>
+                <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-gray-200">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">${title}</h2>
+                    <p class="text-gray-500 mb-6">תקופת חיוב: ${formatNumber(results.billingDays, 0)} ימים (עד ${results.date})</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <!-- Card 1 -->
+                        <div class="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500 shadow-md">
+                            <p class="text-xl font-bold text-gray-800">${apt1Name}</p>
+                            <p class="text-4xl font-extrabold text-blue-600 my-2">${formatCurrency(results.final.AH)}</p>
+                            <p class="text-sm text-gray-600">עלות יומית: ${formatCurrency(results.final.AH / results.billingDays)}</p>
+                            <div class="mt-3 pt-3 border-t text-sm space-y-1">
+                                <div class="flex items-center text-blue-800"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg><b>חשמל:</b> <span class="mr-1">${formatCurrency(results.final.AB)} (${formatNumber(results.consumption.P1, 0)} קוט"ש)</span></div>
+                                <div class="flex items-center text-blue-800"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" viewBox="0 0 20 20" fill="currentColor"><path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.739 0 3.5 3.5 0 01-7.37 0zM12 12.5a.5.5 0 00-.5-.5h-3a.5.5 0 000 1h3a.5.5 0 00.5-.5z" /></svg><b>מים:</b> <span class="mr-1">${formatCurrency(results.final.AE)} (${formatNumber(results.consumption.W1, 1)} קוב)</span></div>
+                            </div>
                         </div>
-                        <div class="p-4 bg-green-50 rounded-lg border-2 border-green-200 text-center shadow-md">
-                            <p class="text-xl font-semibold text-gray-700">${apt2Name}</p>
-                            <p class="text-4xl font-extrabold text-green-600">${formatCurrency(results.final.AI)}</p>
-                            <p class="text-sm text-gray-500 mt-1">(${formatCurrency(results.final.AC)} חשמל + ${formatCurrency(results.final.AF)} מים)</p>
+                        <!-- Card 2 -->
+                        <div class="p-4 bg-green-50 rounded-lg border-l-4 border-green-500 shadow-md">
+                            <p class="text-xl font-bold text-gray-800">${apt2Name}</p>
+                            <p class="text-4xl font-extrabold text-green-600 my-2">${formatCurrency(results.final.AI)}</p>
+                            <p class="text-sm text-gray-600">עלות יומית: ${formatCurrency(results.final.AI / results.billingDays)}</p>
+                            <div class="mt-3 pt-3 border-t text-sm space-y-1">
+                                <div class="flex items-center text-green-800"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg><b>חשמל:</b> <span class="mr-1">${formatCurrency(results.final.AC)} (${formatNumber(results.consumption.P2, 0)} קוט"ש)</span></div>
+                                <div class="flex items-center text-green-800"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" viewBox="0 0 20 20" fill="currentColor"><path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.739 0 3.5 3.5 0 01-7.37 0zM12 12.5a.5.5 0 00-.5-.5h-3a.5.5 0 000 1h3a.5.5 0 00.5-.5z" /></svg><b>מים:</b> <span class="mr-1">${formatCurrency(results.final.AF)} (${formatNumber(results.consumption.W2, 1)} קוב)</span></div>
+                            </div>
                         </div>
-                        <div class="p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200 text-center shadow-md">
-                            <p class="text-xl font-semibold text-gray-700">${apt3Name}</p>
-                            <p class="text-4xl font-extrabold text-yellow-600">${formatCurrency(results.final.AJ)}</p>
-                            <p class="text-sm text-gray-500 mt-1">(${formatCurrency(results.final.AD)} חשמל + ${formatCurrency(results.final.AG)} מים)</p>
+                        <!-- Card 3 -->
+                        <div class="p-4 bg-yellow-50 rounded-lg border-l-4 border-yellow-500 shadow-md">
+                            <p class="text-xl font-bold text-gray-800">${apt3Name}</p>
+                            <p class="text-4xl font-extrabold text-yellow-600 my-2">${formatCurrency(results.final.AJ)}</p>
+                            <p class="text-sm text-gray-600">עלות יומית: ${formatCurrency(results.final.AJ / results.billingDays)}</p>
+                             <div class="mt-3 pt-3 border-t text-sm space-y-1">
+                                <div class="flex items-center text-yellow-800"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg><b>חשמל:</b> <span class="mr-1">${formatCurrency(results.final.AD)} (${formatNumber(results.consumption.P3, 0)} קוט"ש)</span></div>
+                                <div class="flex items-center text-yellow-800"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" viewBox="0 0 20 20" fill="currentColor"><path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.739 0 3.5 3.5 0 01-7.37 0zM12 12.5a.5.5 0 00-.5-.5h-3a.5.5 0 000 1h3a.5.5 0 00.5-.5z" /></svg><b>מים:</b> <span class="mr-1">${formatCurrency(results.final.AG)} (${formatNumber(results.consumption.W3, 1)} קוב)</span></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="flex flex-col md:flex-row justify-around gap-6 text-sm">
-                        <div class="w-full">
-                            <h3 class="font-bold text-gray-700 mb-2">נתוני צריכה בפועל</h3>
-                            <div class="bg-gray-50 p-3 rounded-lg">
-                                <p><strong>סה"כ צריכת חשמל:</strong> ${formatNumber(P_total_consumed, 0)} קוט"ש</p>
-                                <p><strong>סה"כ צריכת מים:</strong> ${formatNumber(W_total_consumed, 1)} קוב</p>
-                                <p><strong>${apt3Name} (חשמל):</strong> ${formatNumber(results.consumption.P3, 0)} קוט"ש (${formatPercent(results.ratios.P3)})</p>
-                                <p><strong>${apt3Name} (מים):</strong> ${formatNumber(results.consumption.W3, 1)} קוב (${formatPercent(results.ratios.W3)})</p>
-                            </div>
-                        </div>
-                        <div class="w-full">
-                            <h3 class="font-bold text-gray-700 mb-2">סיכום לביקורת (מול החשבון)</h3>
-                            <div class="bg-gray-50 p-3 rounded-lg">
-                                <p><strong>סה"כ חיוב חשמל:</strong> ${formatCurrency(totalElectricBill)}</p>
-                                <p><strong>סה"כ חיוב מים:</strong> ${formatCurrency(totalWaterBill)}</p>
-                            </div>
-                        </div>
+                    <div class="text-sm text-center text-gray-500 bg-gray-50 p-3 rounded-lg">
+                        <span>סה"כ חיוב חשמל: <b>${formatCurrency(results.final.AK)}</b></span>
+                        <span class="mx-4">|</span>
+                        <span>סה"כ חיוב מים: <b>${formatCurrency(results.final.AL)}</b></span>
                     </div>
                 </div>
             `;
@@ -544,19 +417,15 @@
                     <td class="px-2 py-2 whitespace-nowrap text-sm text-gray-700">${results ? formatCurrency(results.final.AK) : '---'}</td>
                     <td class="px-2 py-2 whitespace-nowrap text-sm text-gray-700">${results ? formatCurrency(results.final.AL) : '---'}</td>
                     <td class="px-2 py-2 whitespace-nowrap text-sm text-center">
-                        <div class="flex items-center justify-center space-x-2 space-x-reverse">
-                            ${results ? `<button onclick="showDetails(${index})" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded-full shadow transition duration-150">פרטים</button>` : '<span class="text-xs text-red-500">קריאה ראשונה</span>'}
-                            ${!isFirstEntry ? `<button onclick="confirmDeleteReading(${index})" class="text-red-500 hover:text-red-700" title="מחק קריאה זו">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>` : ''}
+                        <div class="flex items-center justify-center space-x-1 space-x-reverse">
+                            ${results ? `<button onclick="showDetails(${index})" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded-md shadow-sm transition duration-150">פרטים</button>` : '<span class="text-xs text-gray-500">קריאה ראשונה</span>'}
+                            <button onclick="showEditModal(${index})" class="flex items-center text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded-md shadow-sm transition duration-150" title="ערוך קריאה זו"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>ערוך</button>
+                            ${!isFirstEntry ? `<button onclick="confirmDeleteReading(${index})" class="flex items-center text-xs bg-red-100 hover:bg-red-200 text-red-800 px-2 py-1 rounded-md shadow-sm transition duration-150" title="מחק קריאה זו"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>מחק</button>` : ''}
                         </div>
                     </td>
                 `;
                 historyBody.appendChild(row);
             });
-            
             renderConsumptionChart(readings);
         }
         
@@ -565,301 +434,105 @@
             if (historicalReadings.length > 0) {
                 const latest = historicalReadings[0];
                 document.getElementById('prev-date').textContent = latest.date;
-                document.getElementById('prev-B').textContent = formatNumber(latest.meters.B, 0);
-                document.getElementById('prev-C').textContent = formatNumber(latest.meters.C, 0);
-                document.getElementById('prev-D').textContent = formatNumber(latest.meters.D, 0);
-                document.getElementById('prev-E').textContent = formatNumber(latest.meters.E, 1);
-                document.getElementById('prev-F').textContent = formatNumber(latest.meters.F, 1);
-                document.getElementById('prev-G').textContent = formatNumber(latest.meters.G, 1);
+                document.getElementById('prev-B').textContent = formatNumber(latest.meters.B, 0); document.getElementById('prev-C').textContent = formatNumber(latest.meters.C, 0); document.getElementById('prev-D').textContent = formatNumber(latest.meters.D, 0);
+                document.getElementById('prev-E').textContent = formatNumber(latest.meters.E, 1); document.getElementById('prev-F').textContent = formatNumber(latest.meters.F, 1); document.getElementById('prev-G').textContent = formatNumber(latest.meters.G, 1);
                 prevDisplay.classList.remove('hidden');
-            } else {
-                prevDisplay.classList.add('hidden');
-            }
+            } else { prevDisplay.classList.add('hidden'); }
         }
         
         function updateTariffFormWithLatest() {
             if (historicalReadings.length > 0) {
                 const tariffs = historicalReadings[0].tariffs;
-                document.getElementById('H').value = formatNumber(tariffs.H, 3);
-                document.getElementById('I').value = formatNumber(tariffs.I, 2);
-                document.getElementById('J').value = formatNumber(tariffs.J, 2);
-                document.getElementById('K').value = formatNumber(tariffs.K, 3);
-                document.getElementById('L').value = formatNumber(tariffs.L, 2);
-                document.getElementById('M').value = formatNumber(tariffs.M, 2);
+                document.getElementById('H').value = formatNumber(tariffs.H, 3); document.getElementById('I').value = formatNumber(tariffs.I, 2); document.getElementById('J').value = formatNumber(tariffs.J, 2);
+                document.getElementById('K').value = formatNumber(tariffs.K, 3); document.getElementById('L').value = formatNumber(tariffs.L, 2); document.getElementById('M').value = formatNumber(tariffs.M, 2);
+            }
+        }
+        
+        function handleRealtimeInput(event) {
+            const input = event.target;
+            const meterId = input.id;
+            const feedbackEl = document.getElementById(`feedback-${meterId}`);
+            const currentValue = parseFloat(input.value);
+
+            if (!feedbackEl || isNaN(currentValue) || historicalReadings.length === 0) {
+                if (feedbackEl) feedbackEl.textContent = '';
+                input.classList.remove('input-invalid');
+                return;
+            }
+            
+            const prevReading = historicalReadings[0].meters[meterId];
+            
+            // Validation check
+            if (currentValue < prevReading) {
+                input.classList.add('input-invalid');
+                feedbackEl.textContent = `נמוך מהקריאה הקודמת (${prevReading})`;
+                feedbackEl.classList.add('text-red-500');
+                feedbackEl.classList.remove('text-gray-500');
+            } else {
+                input.classList.remove('input-invalid');
+                const consumption = currentValue - prevReading;
+                const unit = ['E', 'F', 'G'].includes(meterId) ? 'קוב' : 'קוט"ש';
+                const digits = ['E', 'F', 'G'].includes(meterId) ? 1 : 0;
+                feedbackEl.textContent = `צריכה: ${formatNumber(consumption, digits)} ${unit}`;
+                feedbackEl.classList.remove('text-red-500');
+                feedbackEl.classList.add('text-gray-500');
             }
         }
 
         // --- Chart.js Logic ---
         function renderConsumptionChart(readings) {
             const sorted = [...readings].sort((a, b) => new Date(a.date) - new Date(b.date));
-            if (sorted.length < 2) {
-                if (electricChartInstance) electricChartInstance.destroy();
-                if (waterChartInstance) waterChartInstance.destroy();
-                return;
-            }
-
+            if (sorted.length < 2) { if (electricChartInstance) electricChartInstance.destroy(); if (waterChartInstance) waterChartInstance.destroy(); return; }
             const chartData = sorted.map((curr, i) => i === 0 ? null : calculateCurrentMonth(curr, sorted[i - 1])).filter(Boolean);
-            
             const labels = chartData.map(d => d.date);
             const apt1Name = getApartmentName(1), apt2Name = getApartmentName(2), apt3Name = getApartmentName(3);
 
             const electricCtx = document.getElementById('electric-chart').getContext('2d');
             if (electricChartInstance) electricChartInstance.destroy();
-            electricChartInstance = new Chart(electricCtx, {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [
-                        { label: apt1Name, data: chartData.map(d => d.consumption.P1), backgroundColor: 'rgba(59, 130, 246, 0.7)', stack: 'stack' },
-                        { label: apt2Name, data: chartData.map(d => d.consumption.P2), backgroundColor: 'rgba(5, 150, 105, 0.7)', stack: 'stack' },
-                        { label: apt3Name, data: chartData.map(d => d.consumption.P3), backgroundColor: 'rgba(245, 158, 11, 0.7)', stack: 'stack' }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', rtl: true, labels: { usePointStyle: true } } }, scales: { y: { stacked: true, beginAtZero: true, title: { display: true, text: 'קוט"ש' } }, x: { stacked: true } } }
-            });
-
+            electricChartInstance = new Chart(electricCtx, { type: 'bar', data: { labels, datasets: [ { label: apt1Name, data: chartData.map(d => d.consumption.P1), backgroundColor: 'rgba(59, 130, 246, 0.7)', stack: 'stack' }, { label: apt2Name, data: chartData.map(d => d.consumption.P2), backgroundColor: 'rgba(5, 150, 105, 0.7)', stack: 'stack' }, { label: apt3Name, data: chartData.map(d => d.consumption.P3), backgroundColor: 'rgba(245, 158, 11, 0.7)', stack: 'stack' } ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', rtl: true, labels: { usePointStyle: true } } }, scales: { y: { stacked: true, beginAtZero: true, title: { display: true, text: 'קוט"ש' } }, x: { stacked: true } } } });
             const waterCtx = document.getElementById('water-chart').getContext('2d');
             if (waterChartInstance) waterChartInstance.destroy();
-            waterChartInstance = new Chart(waterCtx, {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [
-                        { label: apt1Name, data: chartData.map(d => d.consumption.W1), backgroundColor: 'rgba(59, 130, 246, 0.7)', stack: 'stack' },
-                        { label: apt2Name, data: chartData.map(d => d.consumption.W2), backgroundColor: 'rgba(5, 150, 105, 0.7)', stack: 'stack' },
-                        { label: apt3Name, data: chartData.map(d => d.consumption.W3), backgroundColor: 'rgba(245, 158, 11, 0.7)', stack: 'stack' }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', rtl: true, labels: { usePointStyle: true } } }, scales: { y: { stacked: true, beginAtZero: true, title: { display: true, text: 'קוב' } }, x: { stacked: true } } }
-            });
+            waterChartInstance = new Chart(waterCtx, { type: 'bar', data: { labels, datasets: [ { label: apt1Name, data: chartData.map(d => d.consumption.W1), backgroundColor: 'rgba(59, 130, 246, 0.7)', stack: 'stack' }, { label: apt2Name, data: chartData.map(d => d.consumption.W2), backgroundColor: 'rgba(5, 150, 105, 0.7)', stack: 'stack' }, { label: apt3Name, data: chartData.map(d => d.consumption.W3), backgroundColor: 'rgba(245, 158, 11, 0.7)', stack: 'stack' } ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', rtl: true, labels: { usePointStyle: true } } }, scales: { y: { stacked: true, beginAtZero: true, title: { display: true, text: 'קוב' } }, x: { stacked: true } } } });
         }
 
-        // --- Tariff Update Logic ---
+        // --- Data & Event Handlers ---
         function saveTariffsOnly() {
-            if (historicalReadings.length === 0) {
-                 displayMessage('אין קריאות שמורות. הזן קריאה ראשונה לפני עדכון תעריפים.', true);
-                 return;
-            }
+            if (historicalReadings.length === 0) { displayMessage('אין קריאות שמורות.', true); return; }
             const newTariffs = {};
             document.querySelectorAll('#reading-form input[data-type="tariff"]').forEach(i => newTariffs[i.id] = parseFloat(i.value) || 0);
-
-            showConfirmation(
-                'אישור עדכון תעריפים', 
-                `האם לעדכן את התעריפים של הקריאה האחרונה (${historicalReadings[0].date})? החישוב יעודכן בהתאם.`, 
-                () => {
-                    historicalReadings[0].tariffs = newTariffs;
-                    if (saveReadingsToLocalStorage(historicalReadings)) {
-                        displayMessage(`התעריפים לקריאה בתאריך ${historicalReadings[0].date} עודכנו!`);
-                        renderHistory(historicalReadings);
-                    }
-                }
-            );
+            showConfirmation('אישור עדכון תעריפים', `האם לעדכן את התעריפים של הקריאה האחרונה (${historicalReadings[0].date})?`, () => {
+                historicalReadings[0].tariffs = newTariffs;
+                if (saveReadingsToLocalStorage(historicalReadings)) { displayMessage(`התעריפים לקריאה בתאריך ${historicalReadings[0].date} עודכנו!`); renderHistory(historicalReadings); }
+            });
         }
-
-        // --- Modal Functions ---
         function closeDetailsModal() { document.getElementById('details-modal-overlay').classList.remove('open'); confirmationAction = null; }
         function executeConfirmationAction() { if (confirmationAction) confirmationAction(); closeDetailsModal(); }
-        
         function showConfirmation(title, message, callback) {
-            confirmationAction = callback;
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-body').innerHTML = `
-                <p class="text-lg mb-6">${message}</p>
-                <div class="flex justify-end space-x-4 space-x-reverse mt-6">
-                    <button onclick="closeDetailsModal()" class="px-6 py-2 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition shadow">ביטול</button>
-                    <button onclick="executeConfirmationAction()" class="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition font-bold shadow-lg">אישור</button>
-                </div>`;
+            confirmationAction = callback; document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').innerHTML = `<p class="text-lg mb-6">${message}</p><div class="flex justify-end space-x-4 space-x-reverse mt-6"><button onclick="closeDetailsModal()" class="px-6 py-2 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300">ביטול</button><button onclick="executeConfirmationAction()" class="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold">אישור</button></div>`;
             document.getElementById('details-modal-overlay').classList.add('open');
         }
-
         function showDetails(index) {
-            const current = historicalReadings[index], previous = historicalReadings[index + 1];
-            if (!previous) return;
-            const results = calculateCurrentMonth(current, previous);
-
-            document.getElementById('modal-title').textContent = `דוח חישוב עבור: ${current.date}`;
+            const current = historicalReadings[index], previous = historicalReadings[index + 1]; if (!previous) return;
+            const results = calculateCurrentMonth(current, previous); document.getElementById('modal-title').textContent = `דוח חישוב עבור: ${current.date}`;
             const apt1Name = getApartmentName(1), apt2Name = getApartmentName(2), apt3Name = getApartmentName(3);
-
-            document.getElementById('modal-body').innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                    <div>
-                        <h4 class="font-bold text-gray-700 mb-2 border-b pb-1">סיכום צריכה</h4>
-                        <ul class="space-y-1">
-                            <li class="font-semibold text-blue-600">${apt1Name} חשמל: ${formatNumber(results.consumption.P1,0)} קוט"ש</li>
-                            <li class="font-semibold text-green-600">${apt2Name} חשמל: ${formatNumber(results.consumption.P2,0)} קוט"ש</li>
-                            <li class="font-semibold text-yellow-600">${apt3Name} חשמל: ${formatNumber(results.consumption.P3,0)} קוט"ש</li>
-                            <li class="pt-2 font-semibold text-blue-600">${apt1Name} מים: ${formatNumber(results.consumption.W1,1)} קוב</li>
-                            <li class="font-semibold text-green-600">${apt2Name} מים: ${formatNumber(results.consumption.W2,1)} קוב</li>
-                            <li class="font-semibold text-yellow-600">${apt3Name} מים: ${formatNumber(results.consumption.W3,1)} קוב</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 class="font-bold text-gray-700 mb-2 border-b pb-1">חלוקה פיננסית סופית (כולל מע"מ)</h4>
-                        <ul class="space-y-1">
-                            <li class="font-bold text-blue-800">${apt1Name} סה"כ: ${formatCurrency(results.final.AH)}</li>
-                            <li class="pl-4 text-gray-600">(${formatCurrency(results.final.AB)} חשמל + ${formatCurrency(results.final.AE)} מים)</li>
-                            <li class="font-bold text-green-800">${apt2Name} סה"כ: ${formatCurrency(results.final.AI)}</li>
-                            <li class="pl-4 text-gray-600">(${formatCurrency(results.final.AC)} חשמל + ${formatCurrency(results.final.AF)} מים)</li>
-                            <li class="font-bold text-yellow-800">${apt3Name} סה"כ: ${formatCurrency(results.final.AJ)}</li>
-                            <li class="pl-4 text-gray-600">(${formatCurrency(results.final.AD)} חשמל + ${formatCurrency(results.final.AG)} מים)</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="mt-6 pt-4 border-t border-gray-200">
-                    <h4 class="font-bold text-gray-700 mb-2">תעריפים בשימוש:</h4>
-                    <p class="text-xs text-gray-600">חשמל: ${formatCurrency(current.tariffs.H)}/קוט"ש + ${formatCurrency(current.tariffs.J)} קבוע; מים: ${formatCurrency(current.tariffs.K)}/קוב + ${formatCurrency(current.tariffs.M)} קבוע. מע"מ: ${formatPercent(current.tariffs.I)}/${formatPercent(current.tariffs.L)}</p>
-                </div>`;
+            document.getElementById('modal-body').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm"><div><h4 class="font-bold text-gray-700 mb-2 border-b pb-1">סיכום צריכה</h4><ul class="space-y-1"><li class="font-semibold text-blue-600">${apt1Name} חשמל: ${formatNumber(results.consumption.P1,0)} קוט"ש</li><li class="font-semibold text-green-600">${apt2Name} חשמל: ${formatNumber(results.consumption.P2,0)} קוט"ש</li><li class="font-semibold text-yellow-600">${apt3Name} חשמל: ${formatNumber(results.consumption.P3,0)} קוט"ש</li><li class="pt-2 font-semibold text-blue-600">${apt1Name} מים: ${formatNumber(results.consumption.W1,1)} קוב</li><li class="font-semibold text-green-600">${apt2Name} מים: ${formatNumber(results.consumption.W2,1)} קוב</li><li class="font-semibold text-yellow-600">${apt3Name} מים: ${formatNumber(results.consumption.W3,1)} קוב</li></ul></div><div><h4 class="font-bold text-gray-700 mb-2 border-b pb-1">חלוקה פיננסית (כולל מע"מ)</h4><ul class="space-y-1"><li class="font-bold text-blue-800">${apt1Name} סה"כ: ${formatCurrency(results.final.AH)}</li><li class="pl-4 text-gray-600">(${formatCurrency(results.final.AB)} חשמל + ${formatCurrency(results.final.AE)} מים)</li><li class="font-bold text-green-800">${apt2Name} סה"כ: ${formatCurrency(results.final.AI)}</li><li class="pl-4 text-gray-600">(${formatCurrency(results.final.AC)} חשמל + ${formatCurrency(results.final.AF)} מים)</li><li class="font-bold text-yellow-800">${apt3Name} סה"כ: ${formatCurrency(results.final.AJ)}</li><li class="pl-4 text-gray-600">(${formatCurrency(results.final.AD)} חשמל + ${formatCurrency(results.final.AG)} מים)</li></ul></div></div><div class="mt-6 pt-4 border-t border-gray-200"><h4 class="font-bold text-gray-700 mb-2">נתוני התקופה (${formatNumber(results.billingDays, 0)} ימים)</h4><p class="text-xs text-gray-600"><b>עלות ממוצעת ליום:</b> ${apt1Name}: ${formatCurrency(results.final.AH / results.billingDays)} | ${apt2Name}: ${formatCurrency(results.final.AI / results.billingDays)} | ${apt3Name}: ${formatCurrency(results.final.AJ / results.billingDays)}</p></div>`;
             document.getElementById('details-modal-overlay').classList.add('open');
         }
-
-        // --- LocalStorage Operations ---
         function loadReadingsFromLocalStorage() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY_READINGS) || '[]'); } catch (e) { console.error(e); return []; } }
         function saveReadingsToLocalStorage(readings) { try { localStorage.setItem(STORAGE_KEY_READINGS, JSON.stringify(readings)); return true; } catch (e) { console.error(e); displayMessage('שגיאה בשמירת נתונים.', true); return false; } }
-        
-        function loadApartmentNames() {
-            try {
-                const names = JSON.parse(localStorage.getItem(STORAGE_KEY_NAMES) || '{}');
-                document.getElementById('apt1-name').value = names['apt1-name'] || 'דירה 1';
-                document.getElementById('apt2-name').value = names['apt2-name'] || 'דירה 2';
-                document.getElementById('apt3-name').value = names['apt3-name'] || 'דירה כללית';
-                apartmentNames = names;
-            } catch (e) { apartmentNames = {}; }
-        }
-
-        function saveApartmentNames() {
-            const names = {
-                'apt1-name': document.getElementById('apt1-name').value.trim() || 'דירה 1',
-                'apt2-name': document.getElementById('apt2-name').value.trim() || 'דירה 2',
-                'apt3-name': document.getElementById('apt3-name').value.trim() || 'דירה כללית'
-            };
-            localStorage.setItem(STORAGE_KEY_NAMES, JSON.stringify(names));
-            apartmentNames = names;
-            displayMessage('שמות הדירות נשמרו!');
-            renderHistory(historicalReadings);
-            updateMeterLabels();
-        }
-
-        function updateMeterLabels() {
-            document.getElementById('label-B').innerHTML = `${getApartmentName(1)} (קוט"ש) <span class="text-red-500">*</span>`;
-            document.getElementById('label-C').innerHTML = `${getApartmentName(2)} (קוט"ש) <span class="text-red-500">*</span>`;
-            document.getElementById('label-E').innerHTML = `${getApartmentName(1)} (קוב) <span class="text-red-500">*</span>`;
-            document.getElementById('label-F').innerHTML = `${getApartmentName(2)} (קוב) <span class="text-red-500">*</span>`;
-        }
-
-        // --- Delete Logic ---
-        function confirmDeleteReading(index) {
-            const readingToDelete = historicalReadings[index];
-            showConfirmation(
-                'אישור מחיקת קריאה',
-                `האם אתה בטוח שברצונך למחוק את הקריאה מתאריך ${readingToDelete.date}? פעולה זו תשפיע על חישובים עוקבים.`,
-                () => deleteReading(index)
-            );
-        }
-
-        function deleteReading(index) {
-            historicalReadings.splice(index, 1);
-            if (saveReadingsToLocalStorage(historicalReadings)) {
-                displayMessage('הקריאה נמחקה בהצלחה.');
-                renderHistory(loadReadingsFromLocalStorage());
-            }
-        }
-
-        // --- Reset Logic ---
-        function resetApplication() {
-            localStorage.removeItem(STORAGE_KEY_READINGS);
-            localStorage.removeItem(STORAGE_KEY_NAMES);
-            document.getElementById('reading-form').reset();
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('date').value = today;
-            loadApartmentNames();
-            renderHistory([]);
-            displayMessage('כל הנתונים נמחקו בהצלחה.', false);
-        }
-
-        // --- Export/Import Logic ---
-        function exportToJson() {
-            if (historicalReadings.length === 0) { displayMessage('אין נתונים לייצוא.', true); return; }
-            const exportData = { readings: historicalReadings, names: apartmentNames };
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `utility_splitter_backup_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            a.remove();
-        }
-
-        function importFromJson(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    const importedReadings = data.readings || data;
-                    if (!Array.isArray(importedReadings)) throw new Error("קובץ לא תקין.");
-                    showConfirmation('אישור ייבוא נתונים', `האם לייבא ${importedReadings.length} קריאות? פעולה זו תחליף את כל הנתונים הקיימים.`, () => {
-                        if (saveReadingsToLocalStorage(importedReadings)) {
-                            localStorage.setItem(STORAGE_KEY_NAMES, JSON.stringify(data.names || {}));
-                            displayMessage('הנתונים יובאו בהצלחה!');
-                            startApplication(); // Full reload
-                        }
-                    });
-                } catch (error) { displayMessage(`שגיאה בייבוא: ${error.message}`, true); }
-            };
-            reader.readAsText(file);
-            event.target.value = '';
-        }
-        
-        function exportToPdf() {
-            if (historicalReadings.length < 2) { displayMessage('נדרשות לפחות 2 קריאות לדוח היסטורי.', true); return; }
-            const apt1 = getApartmentName(1), apt2 = getApartmentName(2), apt3 = getApartmentName(3);
-            let pdfHtml = `<h1 style="text-align: center; color: #1e40af;">דוח חלוקת תשלומים</h1><p style="text-align: center; color: #4b5563;">הופק בתאריך: ${new Date().toLocaleDateString('he-IL')}</p><h2 style="font-size: 12pt;">סיכום תקופות:</h2><table><thead><tr><th>תאריך קריאה</th><th>${apt1}</th><th>${apt2}</th><th>${apt3}</th><th>סך חשמל</th><th>סך מים</th></tr></thead><tbody>`;
-            const sorted = [...historicalReadings].sort((a, b) => new Date(a.date) - new Date(b.date));
-            for (let i = 1; i < sorted.length; i++) {
-                const results = calculateCurrentMonth(sorted[i], sorted[i - 1]);
-                if (!results.error) {
-                    pdfHtml += `<tr><td>${results.date}</td><td>${formatCurrency(results.final.AH)}</td><td>${formatCurrency(results.final.AI)}</td><td>${formatCurrency(results.final.AJ)}</td><td>${formatCurrency(results.final.AK)}</td><td>${formatCurrency(results.final.AL)}</td></tr>`;
-                }
-            }
-            pdfHtml += `</tbody></table>`;
-            
-            document.getElementById('pdf-template').innerHTML = pdfHtml;
-            html2pdf().from(document.getElementById('pdf-template')).set({
-                margin: 15, filename: `דוח_תשלומים_${new Date().toISOString().split('T')[0]}.pdf`,
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            }).save();
-        }
-
-        // --- Save Handler ---
-        function saveReading(e) {
-            e.preventDefault();
-            const meters = {}, tariffs = {};
-            let date;
-            document.querySelectorAll('#reading-form input').forEach(i => {
-                const val = parseFloat(i.value);
-                if (i.dataset.type === 'meter') meters[i.id] = val;
-                else if (i.dataset.type === 'tariff') tariffs[i.id] = val || 0;
-                else if (i.id === 'date') date = i.value;
-            });
-
-            if (!date || Object.values(meters).some(v => isNaN(v))) { displayMessage('אנא מלא את כל שדות הקריאה והתאריך.', true); return; }
-            if (historicalReadings.some(r => r.date === date)) { displayMessage('כבר קיימת קריאה בתאריך זה.', true); return; }
-            if (historicalReadings.length > 0) {
-                if (new Date(date) <= new Date(historicalReadings[0].date)) { displayMessage(`התאריך חייב להיות מאוחר מהקריאה הקודמת (${historicalReadings[0].date}).`, true); return; }
-                const prevMeters = historicalReadings[0].meters;
-                if (Object.keys(meters).some(key => meters[key] < prevMeters[key] - 0.1)) { displayMessage('שגיאה: קריאת מונה נוכחית נמוכה מהקודמת.', true); return; }
-            }
-
-            const newReading = { date, meters, tariffs };
-            const allReadings = [newReading, ...historicalReadings];
-            if (saveReadingsToLocalStorage(allReadings)) {
-                displayMessage('הקריאה נשמרה בהצלחה!');
-                e.target.reset();
-                startApplication(); // Reload everything to reflect changes
-            }
-        }
+        function loadApartmentNames() { try { const names = JSON.parse(localStorage.getItem(STORAGE_KEY_NAMES) || '{}'); document.getElementById('apt1-name').value = names['apt1-name'] || 'דירה 1'; document.getElementById('apt2-name').value = names['apt2-name'] || 'דירה 2'; document.getElementById('apt3-name').value = names['apt3-name'] || 'דירה כללית'; apartmentNames = names; } catch (e) { apartmentNames = {}; } }
+        function saveApartmentNames() { const names = { 'apt1-name': document.getElementById('apt1-name').value.trim() || 'דירה 1', 'apt2-name': document.getElementById('apt2-name').value.trim() || 'דירה 2', 'apt3-name': document.getElementById('apt3-name').value.trim() || 'דירה כללית' }; localStorage.setItem(STORAGE_KEY_NAMES, JSON.stringify(names)); apartmentNames = names; displayMessage('שמות הדירות נשמרו!'); renderHistory(historicalReadings); updateMeterLabels(); }
+        function updateMeterLabels() { document.getElementById('label-B').innerHTML = `${getApartmentName(1)} (חשמל) <span class="text-red-500">*</span>`; document.getElementById('label-C').innerHTML = `${getApartmentName(2)} (חשמל) <span class="text-red-500">*</span>`; document.getElementById('label-E').innerHTML = `${getApartmentName(1)} (מים) <span class="text-red-500">*</span>`; document.getElementById('label-F').innerHTML = `${getApartmentName(2)} (מים) <span class="text-red-500">*</span>`; }
+        function confirmDeleteReading(index) { const readingToDelete = historicalReadings[index]; showConfirmation('אישור מחיקת קריאה', `האם למחוק את הקריאה מתאריך ${readingToDelete.date}?`, () => deleteReading(index)); }
+        function deleteReading(index) { historicalReadings.splice(index, 1); if (saveReadingsToLocalStorage(historicalReadings)) { displayMessage('הקריאה נמחקה בהצלחה.'); renderHistory(loadReadingsFromLocalStorage()); } }
+        function showEditModal(index) { const reading = historicalReadings[index]; document.getElementById('modal-title').textContent = `עריכת קריאה (${reading.date})`; let formHtml = `<form id="edit-form" class="space-y-4"><input type="hidden" id="edit-index" value="${index}"><div><h3 class="font-semibold text-gray-700 mb-2 border-b">קריאות מונה</h3><div class="grid grid-cols-2 gap-4"><div class="input-group"><label for="edit-B">${getApartmentName(1)} (חשמל)</label><input type="number" id="edit-B" value="${reading.meters.B}" class="w-full p-2 border rounded"></div><div class="input-group"><label for="edit-C">${getApartmentName(2)} (חשמל)</label><input type="number" id="edit-C" value="${reading.meters.C}" class="w-full p-2 border rounded"></div><div class="input-group col-span-2"><label for="edit-D">חשמל כללי</label><input type="number" id="edit-D" value="${reading.meters.D}" class="w-full p-2 border rounded bg-blue-50"></div><div class="input-group"><label for="edit-E">${getApartmentName(1)} (מים)</label><input type="number" id="edit-E" value="${reading.meters.E}" step="0.1" class="w-full p-2 border rounded"></div><div class="input-group"><label for="edit-F">${getApartmentName(2)} (מים)</label><input type="number" id="edit-F" value="${reading.meters.F}" step="0.1" class="w-full p-2 border rounded"></div><div class="input-group col-span-2"><label for="edit-G">מים כללי</label><input type="number" id="edit-G" value="${reading.meters.G}" step="0.1" class="w-full p-2 border rounded bg-blue-50"></div></div></div><div><h3 class="font-semibold text-gray-700 mb-2 border-b">תעריפים</h3><div class="grid grid-cols-2 gap-4 text-sm"><div class="input-group"><label for="edit-H">עלות קוט"ש</label><input type="number" id="edit-H" step="0.001" value="${reading.tariffs.H}" class="w-full p-2 border rounded"></div><div class="input-group"><label for="edit-J">קבוע חשמל</label><input type="number" id="edit-J" step="0.01" value="${reading.tariffs.J}" class="w-full p-2 border rounded"></div><div class="input-group"><label for="edit-I">מע"מ חשמל</label><input type="number" id="edit-I" step="0.01" value="${reading.tariffs.I}" class="w-full p-2 border rounded"></div><div class="input-group"><label for="edit-K">עלות קוב מים</label><input type="number" id="edit-K" step="0.001" value="${reading.tariffs.K}" class="w-full p-2 border rounded"></div><div class="input-group"><label for="edit-M">קבוע מים</label><input type="number" id="edit-M" step="0.01" value="${reading.tariffs.M}" class="w-full p-2 border rounded"></div><div class="input-group"><label for="edit-L">מע"מ מים</label><input type="number" id="edit-L" step="0.01" value="${reading.tariffs.L}" class="w-full p-2 border rounded"></div></div></div><div class="flex justify-end space-x-4 space-x-reverse mt-6"><button type="button" onclick="closeDetailsModal()" class="px-6 py-2 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300">ביטול</button><button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold">שמור שינויים</button></div></form>`; document.getElementById('modal-body').innerHTML = formHtml; document.getElementById('edit-form').onsubmit = saveEdit; document.getElementById('details-modal-overlay').classList.add('open'); }
+        function saveEdit(event) { event.preventDefault(); const index = parseInt(document.getElementById('edit-index').value); const newMeters = { B: parseFloat(document.getElementById('edit-B').value), C: parseFloat(document.getElementById('edit-C').value), D: parseFloat(document.getElementById('edit-D').value), E: parseFloat(document.getElementById('edit-E').value), F: parseFloat(document.getElementById('edit-F').value), G: parseFloat(document.getElementById('edit-G').value) }; const newTariffs = { H: parseFloat(document.getElementById('edit-H').value), J: parseFloat(document.getElementById('edit-J').value), I: parseFloat(document.getElementById('edit-I').value), K: parseFloat(document.getElementById('edit-K').value), M: parseFloat(document.getElementById('edit-M').value), L: parseFloat(document.getElementById('edit-L').value) }; const prevReading = historicalReadings[index + 1]; const nextReading = historicalReadings[index - 1]; if (prevReading) { for (const key in newMeters) { if (newMeters[key] < prevReading.meters[key]) { displayMessage(`שגיאה: קריאת מונה ${key} נמוכה מהקריאה הקודמת לה.`, true); return; } } } if (nextReading) { for (const key in newMeters) { if (newMeters[key] > nextReading.meters[key]) { displayMessage(`שגיאה: קריאת מונה ${key} גבוהה מהקריאה העוקבת לה.`, true); return; } } } historicalReadings[index].meters = newMeters; historicalReadings[index].tariffs = newTariffs; if (saveReadingsToLocalStorage(historicalReadings)) { displayMessage('הקריאה עודכנה בהצלחה.'); closeDetailsModal(); renderHistory(loadReadingsFromLocalStorage()); } }
+        function resetApplication() { localStorage.removeItem(STORAGE_KEY_READINGS); localStorage.removeItem(STORAGE_KEY_NAMES); document.getElementById('reading-form').reset(); document.getElementById('date').value = new Date().toISOString().split('T')[0]; loadApartmentNames(); renderHistory([]); displayMessage('כל הנתונים נמחקו בהצלחה.', false); }
+        function exportToJson() { if (historicalReadings.length === 0) { displayMessage('אין נתונים לייצוא.', true); return; } const exportData = { readings: historicalReadings, names: apartmentNames }; const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `utility_splitter_backup_${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url); a.remove(); }
+        function importFromJson(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = function(e) { try { const data = JSON.parse(e.target.result); const importedReadings = data.readings || data; if (!Array.isArray(importedReadings)) throw new Error("קובץ לא תקין."); showConfirmation('אישור ייבוא נתונים', `האם לייבא ${importedReadings.length} קריאות? פעולה זו תחליף את כל הנתונים הקיימים.`, () => { if (saveReadingsToLocalStorage(importedReadings)) { localStorage.setItem(STORAGE_KEY_NAMES, JSON.stringify(data.names || {})); displayMessage('הנתונים יובאו בהצלחה!'); startApplication(); } }); } catch (error) { displayMessage(`שגיאה בייבוא: ${error.message}`, true); } }; reader.readAsText(file); event.target.value = ''; }
+        async function exportToPdf() { if (historicalReadings.length < 2) { displayMessage('נדרשות לפחות 2 קריאות לדוח היסטורי.', true); return; } const apt1 = getApartmentName(1), apt2 = getApartmentName(2), apt3 = getApartmentName(3); const latestResults = calculateCurrentMonth(historicalReadings[0], historicalReadings[1]); const electricChartImg = electricChartInstance ? electricChartInstance.toBase64Image() : ''; const waterChartImg = waterChartInstance ? waterChartInstance.toBase64Image() : ''; let pdfHtml = `<div style="font-family: 'Assistant', sans-serif;"><h1 style="text-align: center; color: #1e40af;">דוח חלוקת תשלומים</h1><p style="text-align: center; color: #4b5563;">הופק בתאריך: ${new Date().toLocaleDateString('he-IL')}</p><h2 style="font-size: 14pt; color: #374151; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 25px;">סיכום תקופה אחרונה: ${latestResults.date}</h2><div style="display: flex; justify-content: space-around; text-align: center; margin: 20px 0;"><div style="border: 1px solid #93c5fd; background-color: #eff6ff; padding: 10px; border-radius: 8px; width: 30%;"><p style="font-size: 12pt; font-weight: bold;">${apt1}</p><p style="font-size: 18pt; font-weight: bold; color: #2563eb;">${formatCurrency(latestResults.final.AH)}</p></div><div style="border: 1px solid #6ee7b7; background-color: #f0fdf4; padding: 10px; border-radius: 8px; width: 30%;"><p style="font-size: 12pt; font-weight: bold;">${apt2}</p><p style="font-size: 18pt; font-weight: bold; color: #059669;">${formatCurrency(latestResults.final.AI)}</p></div><div style="border: 1px solid #fcd34d; background-color: #fffbeb; padding: 10px; border-radius: 8px; width: 30%;"><p style="font-size: 12pt; font-weight: bold;">${apt3}</p><p style="font-size: 18pt; font-weight: bold; color: #d97706;">${formatCurrency(latestResults.final.AJ)}</p></div></div><h2 style="font-size: 14pt; color: #374151; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 25px;">גרפים של צריכה</h2><div style="text-align: center; margin-top: 15px;"><img src="${electricChartImg}" style="width: 100%; max-width: 600px; margin-bottom: 20px;"><img src="${waterChartImg}" style="width: 100%; max-width: 600px;"></div><h2 style="font-size: 14pt; color: #374151; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 25px;">טבלת היסטוריה</h2><table><thead><tr><th>תאריך קריאה</th><th>${apt1}</th><th>${apt2}</th><th>${apt3}</th><th>סך חשמל</th><th>סך מים</th></tr></thead><tbody>`; const sorted = [...historicalReadings].sort((a, b) => new Date(a.date) - new Date(b.date)); for (let i = 1; i < sorted.length; i++) { const results = calculateCurrentMonth(sorted[i], sorted[i - 1]); if (!results.error) { pdfHtml += `<tr><td>${results.date}</td><td>${formatCurrency(results.final.AH)}</td><td>${formatCurrency(results.final.AI)}</td><td>${formatCurrency(results.final.AJ)}</td><td>${formatCurrency(results.final.AK)}</td><td>${formatCurrency(results.final.AL)}</td></tr>`; } } pdfHtml += `</tbody></table></div>`; const pdfTemplate = document.getElementById('pdf-template'); pdfTemplate.innerHTML = pdfHtml; html2pdf().from(pdfTemplate).set({ margin: 15, filename: `דוח_תשלומים_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).save(); }
+        function saveReading(e) { e.preventDefault(); const meters = {}, tariffs = {}; let date; document.querySelectorAll('#reading-form input').forEach(i => { const val = parseFloat(i.value); if (i.dataset.type === 'meter') meters[i.id] = val; else if (i.dataset.type === 'tariff') tariffs[i.id] = val || 0; else if (i.id === 'date') date = i.value; }); if (!date || Object.values(meters).some(v => isNaN(v))) { displayMessage('אנא מלא את כל שדות הקריאה והתאריך.', true); return; } if (historicalReadings.some(r => r.date === date)) { displayMessage('כבר קיימת קריאה בתאריך זה.', true); return; } if (historicalReadings.length > 0) { if (new Date(date) <= new Date(historicalReadings[0].date)) { displayMessage(`התאריך חייב להיות מאוחר מהקריאה הקודמת (${historicalReadings[0].date}).`, true); return; } const prevMeters = historicalReadings[0].meters; if (Object.keys(meters).some(key => meters[key] < prevMeters[key] - 0.1)) { displayMessage('שגיאה: קריאת מונה נוכחית נמוכה מהקודמת.', true); return; } } const newReading = { date, meters, tariffs }; const allReadings = [newReading, ...historicalReadings]; if (saveReadingsToLocalStorage(allReadings)) { displayMessage('הקריאה נשמרה בהצלחה!'); e.target.reset(); document.querySelectorAll('.input-invalid').forEach(el => el.classList.remove('input-invalid')); document.querySelectorAll('[id^="feedback-"]').forEach(el => el.textContent = ''); startApplication(); } }
 
         // --- Initialization ---
         function startApplication() {
@@ -869,27 +542,27 @@
             renderHistory(initialReadings);
             document.getElementById('date').value = new Date().toISOString().split('T')[0];
             
+            // Event Listeners
             document.getElementById('reading-form').onsubmit = saveReading;
             document.getElementById('reset-button').onclick = () => showConfirmation('אישור מחיקת נתונים', 'האם למחוק את כל הנתונים? פעולה זו בלתי הפיכה.', resetApplication);
             document.getElementById('import-button').onclick = () => document.getElementById('import-file').click();
             document.getElementById('import-file').onchange = importFromJson;
+            document.querySelectorAll('input[data-type="meter"]').forEach(input => input.addEventListener('input', handleRealtimeInput));
 
-            // --- Dropdown Menu Logic ---
-            const exportButton = document.getElementById('export-menu-button');
-            const exportMenu = document.getElementById('export-menu');
-            
-            exportButton.addEventListener('click', (event) => {
-                event.stopPropagation();
-                exportMenu.classList.toggle('hidden');
+            // Accordion Logic
+            document.querySelectorAll('.accordion-header').forEach(header => {
+                header.addEventListener('click', () => {
+                    const content = document.getElementById(`accordion-content-${header.dataset.accordionId}`);
+                    header.classList.toggle('open');
+                    content.classList.toggle('open');
+                });
             });
 
-            window.addEventListener('click', (event) => {
-                if (!exportMenu.classList.contains('hidden') && !exportButton.contains(event.target)) {
-                    exportMenu.classList.add('hidden');
-                }
-            });
+            // Dropdown Menu Logic
+            const exportButton = document.getElementById('export-menu-button'); const exportMenu = document.getElementById('export-menu');
+            exportButton.addEventListener('click', (event) => { event.stopPropagation(); exportMenu.classList.toggle('hidden'); });
+            window.addEventListener('click', (event) => { if (!exportMenu.classList.contains('hidden') && !exportButton.contains(event.target)) { exportMenu.classList.add('hidden'); } });
         }
-
         window.onload = startApplication; 
     </script>
 </body>
