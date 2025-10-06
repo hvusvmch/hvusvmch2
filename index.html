@@ -194,7 +194,13 @@
                     <div class="mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 gap-3">
                         <div class="relative col-span-1">
                             <button id="export-menu-button" type="button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-3 rounded-xl flex items-center justify-center text-sm">ייצוא<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg></button>
-                            <div id="export-menu" class="absolute left-0 w-48 mt-2 origin-top-right bg-white border rounded-md shadow-lg z-20 hidden"><div class="py-1"><button onclick="exportToPdf()" class="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ייצוא PDF</button><button onclick="exportToJson()" class="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ייצוא JSON (גיבוי)</button></div></div>
+                            <div id="export-menu" class="absolute left-0 w-48 mt-2 origin-top-right bg-white border rounded-md shadow-lg z-20 hidden">
+                                <div class="py-1">
+                                    <button onclick="exportToPdf()" class="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ייצוא PDF</button>
+                                    <button onclick="exportToTxt()" class="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ייצוא טקסט (TXT)</button>
+                                    <button onclick="exportToJson()" class="block w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ייצוא JSON (גיבוי)</button>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-span-1">
                             <input type="file" id="import-file" accept=".json" class="hidden" />
@@ -530,8 +536,137 @@
         function saveEdit(event) { event.preventDefault(); const index = parseInt(document.getElementById('edit-index').value); const newMeters = { B: parseFloat(document.getElementById('edit-B').value), C: parseFloat(document.getElementById('edit-C').value), D: parseFloat(document.getElementById('edit-D').value), E: parseFloat(document.getElementById('edit-E').value), F: parseFloat(document.getElementById('edit-F').value), G: parseFloat(document.getElementById('edit-G').value) }; const newTariffs = { H: parseFloat(document.getElementById('edit-H').value), J: parseFloat(document.getElementById('edit-J').value), I: parseFloat(document.getElementById('edit-I').value), K: parseFloat(document.getElementById('edit-K').value), M: parseFloat(document.getElementById('edit-M').value), L: parseFloat(document.getElementById('edit-L').value) }; const prevReading = historicalReadings[index + 1]; const nextReading = historicalReadings[index - 1]; if (prevReading) { for (const key in newMeters) { if (newMeters[key] < prevReading.meters[key]) { displayMessage(`שגיאה: קריאת מונה ${key} נמוכה מהקריאה הקודמת לה.`, true); return; } } } if (nextReading) { for (const key in newMeters) { if (newMeters[key] > nextReading.meters[key]) { displayMessage(`שגיאה: קריאת מונה ${key} גבוהה מהקריאה העוקבת לה.`, true); return; } } } historicalReadings[index].meters = newMeters; historicalReadings[index].tariffs = newTariffs; if (saveReadingsToLocalStorage(historicalReadings)) { displayMessage('הקריאה עודכנה בהצלחה.'); closeDetailsModal(); renderHistory(loadReadingsFromLocalStorage()); } }
         function resetApplication() { localStorage.removeItem(STORAGE_KEY_READINGS); localStorage.removeItem(STORAGE_KEY_NAMES); document.getElementById('reading-form').reset(); document.getElementById('date').value = new Date().toISOString().split('T')[0]; loadApartmentNames(); renderHistory([]); displayMessage('כל הנתונים נמחקו בהצלחה.', false); }
         function exportToJson() { if (historicalReadings.length === 0) { displayMessage('אין נתונים לייצוא.', true); return; } const exportData = { readings: historicalReadings, names: apartmentNames }; const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `utility_splitter_backup_${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url); a.remove(); }
+        
+        function exportToTxt() {
+            if (historicalReadings.length < 2) { displayMessage('נדרשות לפחות 2 קריאות לדוח טקסט.', true); return; }
+            let txtContent = "דוח חלוקת תשלומים\r\n"; txtContent += "======================\r\n"; txtContent += `הופק בתאריך: ${new Date().toLocaleDateString('he-IL')}\r\n\r\n`;
+            const apt1 = getApartmentName(1), apt2 = getApartmentName(2), apt3 = getApartmentName(3);
+            const sorted = [...historicalReadings].sort((a, b) => new Date(a.date) - new Date(b.date));
+            for (let i = 1; i < sorted.length; i++) {
+                const prev = sorted[i - 1], curr = sorted[i], results = calculateCurrentMonth(curr, prev);
+                if (results && !results.error) {
+                    txtContent += `--- תקופת חיוב: ${prev.date} עד ${curr.date} (${formatNumber(results.billingDays, 0)} ימים) ---\r\n\r\n`;
+                    txtContent += `${apt1}:\r\n  - סה"כ לתשלום: ${formatCurrency(results.final.AH)}\r\n  - צריכת חשמל: ${formatNumber(results.consumption.P1, 0)} קוט"ש (${formatCurrency(results.final.AB)})\r\n  - צריכת מים: ${formatNumber(results.consumption.W1, 1)} קוב (${formatCurrency(results.final.AE)})\r\n\r\n`;
+                    txtContent += `${apt2}:\r\n  - סה"כ לתשלום: ${formatCurrency(results.final.AI)}\r\n  - צריכת חשמל: ${formatNumber(results.consumption.P2, 0)} קוט"ש (${formatCurrency(results.final.AC)})\r\n  - צריכת מים: ${formatNumber(results.consumption.W2, 1)} קוב (${formatCurrency(results.final.AF)})\r\n\r\n`;
+                    txtContent += `${apt3}:\r\n  - סה"כ לתשלום: ${formatCurrency(results.final.AJ)}\r\n  - צריכת חשמל: ${formatNumber(results.consumption.P3, 0)} קוט"ש (${formatCurrency(results.final.AD)})\r\n  - צריכת מים: ${formatNumber(results.consumption.W3, 1)} קוב (${formatCurrency(results.final.AG)})\r\n\r\n`;
+                    txtContent += `סיכום כללי לתקופה:\r\n  - סך חיוב חשמל: ${formatCurrency(results.final.AK)}\r\n  - סך חיוב מים: ${formatCurrency(results.final.AL)}\r\n==============================================\r\n\r\n`;
+                }
+            }
+            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' }); const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `utility_report_${new Date().toISOString().split('T')[0]}.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
         function importFromJson(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = function(e) { try { const data = JSON.parse(e.target.result); const importedReadings = data.readings || data; if (!Array.isArray(importedReadings)) throw new Error("קובץ לא תקין."); showConfirmation('אישור ייבוא נתונים', `האם לייבא ${importedReadings.length} קריאות? פעולה זו תחליף את כל הנתונים הקיימים.`, () => { if (saveReadingsToLocalStorage(importedReadings)) { localStorage.setItem(STORAGE_KEY_NAMES, JSON.stringify(data.names || {})); displayMessage('הנתונים יובאו בהצלחה!'); startApplication(); } }); } catch (error) { displayMessage(`שגיאה בייבוא: ${error.message}`, true); } }; reader.readAsText(file); event.target.value = ''; }
-        async function exportToPdf() { if (historicalReadings.length < 2) { displayMessage('נדרשות לפחות 2 קריאות לדוח היסטורי.', true); return; } const apt1 = getApartmentName(1), apt2 = getApartmentName(2), apt3 = getApartmentName(3); const latestResults = calculateCurrentMonth(historicalReadings[0], historicalReadings[1]); const electricChartImg = electricChartInstance ? electricChartInstance.toBase64Image() : ''; const waterChartImg = waterChartInstance ? waterChartInstance.toBase64Image() : ''; let pdfHtml = `<div style="font-family: 'Assistant', sans-serif;"><h1 style="text-align: center; color: #1e40af;">דוח חלוקת תשלומים</h1><p style="text-align: center; color: #4b5563;">הופק בתאריך: ${new Date().toLocaleDateString('he-IL')}</p><h2 style="font-size: 14pt; color: #374151; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 25px;">סיכום תקופה אחרונה: ${latestResults.date}</h2><div style="display: flex; justify-content: space-around; text-align: center; margin: 20px 0;"><div style="border: 1px solid #93c5fd; background-color: #eff6ff; padding: 10px; border-radius: 8px; width: 30%;"><p style="font-size: 12pt; font-weight: bold;">${apt1}</p><p style="font-size: 18pt; font-weight: bold; color: #2563eb;">${formatCurrency(latestResults.final.AH)}</p></div><div style="border: 1px solid #6ee7b7; background-color: #f0fdf4; padding: 10px; border-radius: 8px; width: 30%;"><p style="font-size: 12pt; font-weight: bold;">${apt2}</p><p style="font-size: 18pt; font-weight: bold; color: #059669;">${formatCurrency(latestResults.final.AI)}</p></div><div style="border: 1px solid #fcd34d; background-color: #fffbeb; padding: 10px; border-radius: 8px; width: 30%;"><p style="font-size: 12pt; font-weight: bold;">${apt3}</p><p style="font-size: 18pt; font-weight: bold; color: #d97706;">${formatCurrency(latestResults.final.AJ)}</p></div></div><h2 style="font-size: 14pt; color: #374151; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 25px;">גרפים של צריכה</h2><div style="text-align: center; margin-top: 15px;"><img src="${electricChartImg}" style="width: 100%; max-width: 600px; margin-bottom: 20px;"><img src="${waterChartImg}" style="width: 100%; max-width: 600px;"></div><h2 style="font-size: 14pt; color: #374151; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 25px;">טבלת היסטוריה</h2><table><thead><tr><th>תאריך קריאה</th><th>${apt1}</th><th>${apt2}</th><th>${apt3}</th><th>סך חשמל</th><th>סך מים</th></tr></thead><tbody>`; const sorted = [...historicalReadings].sort((a, b) => new Date(a.date) - new Date(b.date)); for (let i = 1; i < sorted.length; i++) { const results = calculateCurrentMonth(sorted[i], sorted[i - 1]); if (!results.error) { pdfHtml += `<tr><td>${results.date}</td><td>${formatCurrency(results.final.AH)}</td><td>${formatCurrency(results.final.AI)}</td><td>${formatCurrency(results.final.AJ)}</td><td>${formatCurrency(results.final.AK)}</td><td>${formatCurrency(results.final.AL)}</td></tr>`; } } pdfHtml += `</tbody></table></div>`; const pdfTemplate = document.getElementById('pdf-template'); pdfTemplate.innerHTML = pdfHtml; html2pdf().from(pdfTemplate).set({ margin: 15, filename: `דוח_תשלומים_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).save(); }
+        
+        async function exportToPdf() {
+            if (historicalReadings.length < 2) {
+                displayMessage('נדרשות לפחות 2 קריאות לדוח היסטורי.', true);
+                return;
+            }
+
+            displayMessage('מכין את קובץ ה-PDF, אנא המתן...');
+
+            const apt1 = getApartmentName(1), apt2 = getApartmentName(2), apt3 = getApartmentName(3);
+            const latestResults = calculateCurrentMonth(historicalReadings[0], historicalReadings[1]);
+            const electricChartImg = electricChartInstance ? electricChartInstance.toBase64Image() : '';
+            const waterChartImg = waterChartInstance ? waterChartInstance.toBase64Image() : '';
+
+            const loadImage = (src) => new Promise((resolve, reject) => {
+                if (!src) return resolve(); // Resolve immediately if no image source
+                const img = new Image();
+                img.onload = () => resolve();
+                img.onerror = (err) => {
+                    console.error("Image load error:", err);
+                    reject(err);
+                };
+                img.src = src;
+            });
+
+            try {
+                // Wait for both images to be fully loaded and decoded by the browser
+                await Promise.all([loadImage(electricChartImg), loadImage(waterChartImg)]);
+
+                // Simplified layout for PDF header cards using a table to improve compatibility
+                const summaryCardsHtml = `
+                <table style="width: 100%; border-spacing: 10px; border-collapse: separate; margin: 20px 0; page-break-inside: avoid;">
+                    <tr>
+                        <td style="width: 33%; border: 1px solid #93c5fd; background-color: #eff6ff; padding: 10px; border-radius: 8px; text-align: center;">
+                            <p style="font-size: 12pt; font-weight: bold;">${apt1}</p>
+                            <p style="font-size: 18pt; font-weight: bold; color: #2563eb;">${formatCurrency(latestResults.final.AH)}</p>
+                        </td>
+                        <td style="width: 33%; border: 1px solid #6ee7b7; background-color: #f0fdf4; padding: 10px; border-radius: 8px; text-align: center;">
+                            <p style="font-size: 12pt; font-weight: bold;">${apt2}</p>
+                            <p style="font-size: 18pt; font-weight: bold; color: #059669;">${formatCurrency(latestResults.final.AI)}</p>
+                        </td>
+                        <td style="width: 33%; border: 1px solid #fcd34d; background-color: #fffbeb; padding: 10px; border-radius: 8px; text-align: center;">
+                            <p style="font-size: 12pt; font-weight: bold;">${apt3}</p>
+                            <p style="font-size: 18pt; font-weight: bold; color: #d97706;">${formatCurrency(latestResults.final.AJ)}</p>
+                        </td>
+                    </tr>
+                </table>`;
+
+                let historyTableHtml = ``;
+                const sorted = [...historicalReadings].sort((a, b) => new Date(a.date) - new Date(b.date));
+                for (let i = 1; i < sorted.length; i++) {
+                    const results = calculateCurrentMonth(sorted[i], sorted[i - 1]);
+                    if (results && !results.error) {
+                        historyTableHtml += `<tr><td>${results.date}</td><td>${formatCurrency(results.final.AH)}</td><td>${formatCurrency(results.final.AI)}</td><td>${formatCurrency(results.final.AJ)}</td><td>${formatCurrency(results.final.AK)}</td><td>${formatCurrency(results.final.AL)}</td></tr>`;
+                    }
+                }
+                
+                let pdfHtml = `
+                <div style="font-family: 'Assistant', sans-serif;">
+                    <h1 style="text-align: center; color: #1e40af;">דוח חלוקת תשלומים</h1>
+                    <p style="text-align: center; color: #4b5563;">הופק בתאריך: ${new Date().toLocaleDateString('he-IL')}</p>
+                    <h2 style="font-size: 14pt; color: #374151; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 25px;">סיכום תקופה אחרונה: ${latestResults.date}</h2>
+                    ${summaryCardsHtml}
+                    <h2 style="font-size: 14pt; color: #374151; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 25px; page-break-before: auto;">גרפים של צריכה</h2>
+                    <div style="text-align: center; margin-top: 15px; page-break-inside: avoid;">
+                        <img src="${electricChartImg}" style="width: 100%; max-width: 600px; margin-bottom: 20px;">
+                        <img src="${waterChartImg}" style="width: 100%; max-width: 600px;">
+                    </div>
+                    <h2 style="font-size: 14pt; color: #374151; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 25px; page-break-before: always;">טבלת היסטוריה</h2>
+                    <table>
+                        <thead><tr><th>תאריך קריאה</th><th>${apt1}</th><th>${apt2}</th><th>${apt3}</th><th>סך חשמל</th><th>סך מים</th></tr></thead>
+                        <tbody>${historyTableHtml}</tbody>
+                    </table>
+                </div>`;
+                
+                const pdfTemplate = document.getElementById('pdf-template');
+                pdfTemplate.innerHTML = pdfHtml;
+                
+                // --- ROBUST PDF GENERATION ---
+                // Temporarily move the template element into the visible DOM to ensure rendering.
+                // It's invisible to the user but available to the rendering engine.
+                const originalStyle = { position: pdfTemplate.style.position, left: pdfTemplate.style.left, top: pdfTemplate.style.top, zIndex: pdfTemplate.style.zIndex, opacity: pdfTemplate.style.opacity };
+                pdfTemplate.style.position = 'absolute';
+                pdfTemplate.style.left = '0px';
+                pdfTemplate.style.top = '0px';
+                pdfTemplate.style.zIndex = '-1';
+                pdfTemplate.style.opacity = '0';
+
+                const worker = html2pdf().from(pdfTemplate).set({
+                    margin: 15, filename: `דוח_תשלומים_${new Date().toISOString().split('T')[0]}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                });
+
+                // Use the promise to restore original styles after generation is complete or fails
+                worker.save().then(() => {
+                    Object.assign(pdfTemplate.style, originalStyle);
+                }).catch((err) => {
+                    console.error("PDF generation error:", err);
+                    displayMessage('אירעה שגיאה חמורה ביצירת ה-PDF.', true);
+                    Object.assign(pdfTemplate.style, originalStyle);
+                });
+
+            } catch (error) {
+                console.error("Failed to load chart images for PDF export:", error);
+                displayMessage('שגיאה ביצירת ה-PDF. לא ניתן היה לטעון את הגרפים.', true);
+            }
+        }
+
         function saveReading(e) { e.preventDefault(); const meters = {}, tariffs = {}; let date; document.querySelectorAll('#reading-form input').forEach(i => { const val = parseFloat(i.value); if (i.dataset.type === 'meter') meters[i.id] = val; else if (i.dataset.type === 'tariff') tariffs[i.id] = val || 0; else if (i.id === 'date') date = i.value; }); if (!date || Object.values(meters).some(v => isNaN(v))) { displayMessage('אנא מלא את כל שדות הקריאה והתאריך.', true); return; } if (historicalReadings.some(r => r.date === date)) { displayMessage('כבר קיימת קריאה בתאריך זה.', true); return; } if (historicalReadings.length > 0) { if (new Date(date) <= new Date(historicalReadings[0].date)) { displayMessage(`התאריך חייב להיות מאוחר מהקריאה הקודמת (${historicalReadings[0].date}).`, true); return; } const prevMeters = historicalReadings[0].meters; if (Object.keys(meters).some(key => meters[key] < prevMeters[key] - 0.1)) { displayMessage('שגיאה: קריאת מונה נוכחית נמוכה מהקודמת.', true); return; } } const newReading = { date, meters, tariffs }; const allReadings = [newReading, ...historicalReadings]; if (saveReadingsToLocalStorage(allReadings)) { displayMessage('הקריאה נשמרה בהצלחה!'); e.target.reset(); document.querySelectorAll('.input-invalid').forEach(el => el.classList.remove('input-invalid')); document.querySelectorAll('[id^="feedback-"]').forEach(el => el.textContent = ''); startApplication(); } }
 
         // --- Initialization ---
